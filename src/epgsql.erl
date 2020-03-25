@@ -237,6 +237,27 @@ get_cmd_status(C) ->
 squery(Connection, SqlQuery) ->
     epgsql_sock:sync_command(Connection, epgsql_cmd_squery, SqlQuery).
 
+with_timeout(Fun, Timeout) ->
+    Tag = make_ref(),
+    {Receiver, Ref} = erlang:spawn_monitor(
+                        fun() ->
+                                process_flag(trap_exit, true),
+                                Result = Fun(),
+                                exit({self(),Tag,Result})
+                        end),
+    receive
+        {'DOWN', Ref, _, _, {Receiver, Tag, Result}} ->
+            Result;
+        {'DOWN', Ref, _, _, {timeout, _}} ->
+            {error, timeout};
+        {'DOWN', Ref, _, _, Reason} ->
+            {error, Reason}
+    after Timeout ->
+     
+      exit(timeout)
+    end.
+
+
 equery(C, Sql) ->
     equery(C, Sql, []).
 
