@@ -166,9 +166,7 @@ complete_connect(C, Ref, Opts) ->
         %% If we connect, then try and update the type cache.  When
         %% all is said and done, pass the result along as a message.
         {C, Ref, connected} ->
-            case maps:get(codecs, Opts, undefined) of
-                undefined ->
-                    {ok, _} = epgsql:update_type_cache(C);
+            case maps:get(codecs, Opts, []) of
                 [_|_] = Codecs ->
                     {ok, _} = epgsql:update_type_cache(C, Codecs);
                 [] ->

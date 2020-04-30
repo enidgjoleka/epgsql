@@ -23,7 +23,6 @@
          close/2, close/3,
          sync/1,
          cancel/1,
-         update_type_cache/1,
          update_type_cache/2,
          with_transaction/2,
          with_transaction/3,
@@ -175,7 +174,6 @@ call_connect(C, Opts) ->
     case epgsql_sock:sync_command(
            C, epgsql_cmd_connect, Opts1) of
         connected ->
-            %% If following call fails for you, try to add {codecs, []} connect option
             {ok, _} = maybe_update_typecache(C, Opts1),
             {ok, C};
         Error = {error, _} ->
@@ -184,20 +182,12 @@ call_connect(C, Opts) ->
 
 
 maybe_update_typecache(C, Opts) ->
-    maybe_update_typecache(C, maps:get(replication, Opts, undefined), maps:get(codecs, Opts, undefined)).
+    do_update_typecache(C, maps:get(codecs, Opts, [])).
 
-maybe_update_typecache(C, undefined, undefined) ->
-    %% TODO: don't execute 'update_type_cache' when `codecs` is undefined.
-    %% This will break backward compatibility
-    update_type_cache(C);
-maybe_update_typecache(C, undefined, [_ | _] = Codecs) ->
+do_update_typecache(C, [_ | _] = Codecs) ->
     update_type_cache(C, Codecs);
-maybe_update_typecache(_, _, _) ->
+do_update_typecache(_, _) ->
     {ok, []}.
-
-update_type_cache(C) ->
-    update_type_cache(C, [{epgsql_codec_hstore, []},
-                          {epgsql_codec_postgis, []}]).
 
 -spec update_type_cache(connection(), [{epgsql_codec:codec_mod(), Opts :: any()}]) ->
                                epgsql_cmd_update_type_cache:response() | {error, empty}.
