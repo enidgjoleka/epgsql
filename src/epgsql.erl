@@ -177,7 +177,7 @@ connect(C, Host, Username, Password, Opts) ->
 -spec call_connect(connection(), connect_opts())
        -> {ok, Connection :: connection()} | {error, Reason :: connect_error()}.
 call_connect(C, Opts) ->
-    Opts1 = epgsql_cmd_connect:opts_hide_password(to_map(Opts)),
+    Opts1 = to_map(Opts),
     case epgsql_sock:sync_command(
            C, epgsql_cmd_connect, Opts1) of
         connected ->

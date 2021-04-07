@@ -6,7 +6,7 @@
 %%%
 -module(epgsql_cmd_connect).
 -behaviour(epgsql_command).
--export([hide_password/1, opts_hide_password/1, open_socket/2]).
+-export([open_socket/2]).
 -export([init/1, execute/2, handle_message/4]).
 -export_type([response/0, connect_error/0]).
 
@@ -49,8 +49,7 @@ init(#{host := _, username := _} = Opts) ->
 
 execute(PgSock, #connect{opts = #{username := Username} = Opts, stage = connect} = State) ->
     SockOpts = prepare_tcp_opts(maps:get(tcp_opts, Opts, [])),
-    FilteredOpts = filter_sensitive_info(Opts),
-    PgSock1 = epgsql_sock:set_attr(connect_opts, FilteredOpts, PgSock),
+    PgSock1 = epgsql_sock:set_attr(connect_opts, Opts, PgSock),
     case open_socket(SockOpts, Opts) of
         {ok, Mode, Sock} ->
             PgSock2 = epgsql_sock:set_net_socket(Mode, Sock, PgSock1),
@@ -140,29 +139,6 @@ maybe_ssl(Sock, Flag, ConnectOpts, Deadline) ->
         {error, Reason} ->
             {error, Reason}
     end.
-
-%% @doc Replace `password' in Opts map with obfuscated one
-opts_hide_password(#{password := Password} = Opts) ->
-    HiddenPassword = hide_password(Password),
-    Opts#{password => HiddenPassword};
-opts_hide_password(Opts) -> Opts.
-
-%% @doc password and username are sensitive data that should not be stored in a
-%% permanent state that might crash during code upgrade
-filter_sensitive_info(Opts0) ->
-  maps:without([password, username], Opts0).
-
-%% @doc this function wraps plaintext password to a lambda function, so, if
-%% epgsql_sock process crashes when executing `connect' command, password will
-%% not appear in a crash log
--spec hide_password(iodata()) -> fun( () -> iodata() ).
-hide_password(Password) when is_list(Password);
-                             is_binary(Password) ->
-    fun() ->
-            Password
-    end;
-hide_password(PasswordFun) when is_function(PasswordFun, 0) ->
-    PasswordFun.
 
 %% Auth sub-protocol
 
@@ -306,8 +282,7 @@ prepare_tcp_opts(Opts0) ->
 
 
 get_password(Opts) ->
-    PasswordFun = maps:get(password, Opts),
-    PasswordFun().
+    maps:get(password, Opts).
 
 
 hex(Bin) ->

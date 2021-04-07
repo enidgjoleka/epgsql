@@ -300,12 +300,17 @@ code_change(_OldVsn, State, _Extra) ->
 
 format_status(normal, [_PDict, State=#state{}]) ->
   [{data, [{"State", State}]}];
-format_status(terminate, [_PDict, State]) ->
-  %% Do not format the rows attribute when process terminates abnormally
-  %% but allow it when is a sys:get_status/1.2
-  State#state{rows = []}.
+format_status(terminate, [_PDict, #state{connect_opts = Opts} = State]) ->
+  %% Do not format the rows and sensitive attributes in connect_opts when the process
+  %% terminates abnormally but allow them when it is a sys:get_status/1.2
+  State#state{rows = information_redacted, connect_opts = filter_sensitive_info(Opts)}.
 
 %% -- internal functions --
+
+%% @doc password and username are sensitive data that should not be stored in a
+%% permanent state that might crash during code upgrade
+filter_sensitive_info(Opts) ->
+  maps:without([password, username], Opts).
 
 -spec command_new(transport(), epgsql_command:command(), any(), pg_sock()) ->
                          Result when
