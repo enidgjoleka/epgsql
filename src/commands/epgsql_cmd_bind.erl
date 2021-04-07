@@ -1,5 +1,11 @@
+%% @doc Binds placeholder parameters to prepared statement, creating a "portal"
+%%
+%% ```
 %% > Bind
 %% < BindComplete
+%% '''
+%% @see epgsql_cmd_parse
+%% @see epgsql_cmd_execute
 -module(epgsql_cmd_bind).
 -behaviour(epgsql_command).
 -export([init/1, execute/2, handle_message/4]).
@@ -24,13 +30,11 @@ execute(Sock, #bind{stmt = Stmt, portal = PortalName, params = Params} = St) ->
     TypedParams = lists:zip(Types, Params),
     Bin1 = epgsql_wire:encode_parameters(TypedParams, Codec),
     Bin2 = epgsql_wire:encode_formats(Columns),
-    epgsql_sock:send_multi(
-      Sock,
-      [
-       {?BIND, [PortalName, 0, StatementName, 0, Bin1, Bin2]},
-       {?FLUSH, []}
-      ]),
-    {ok, Sock, St}.
+    Commands = [
+       epgsql_wire:encode_bind(PortalName, StatementName, Bin1, Bin2),
+       epgsql_wire:encode_flush()
+      ],
+    {send_multi, Commands, Sock, St}.
 
 handle_message(?BIND_COMPLETE, <<>>, Sock, _State) ->
     {finish, ok, ok, Sock};

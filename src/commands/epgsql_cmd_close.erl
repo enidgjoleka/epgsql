@@ -1,5 +1,9 @@
+%% @doc Closes statement / portal
+%%
+%% ```
 %% > Close
 %% < CloseComplete
+%% '''
 -module(epgsql_cmd_close).
 -behaviour(epgsql_command).
 -export([init/1, execute/2, handle_message/4]).
@@ -18,17 +22,11 @@ init({Type, Name}) ->
     #close{type = Type, name = Name}.
 
 execute(Sock, #close{type = Type, name = Name} = St) ->
-    Type2 = case Type of
-        statement -> ?PREPARED_STATEMENT;
-        portal    -> ?PORTAL
-    end,
-    epgsql_sock:send_multi(
-      Sock,
-      [
-       {?CLOSE, [Type2, Name, 0]},
-       {?FLUSH, []}
-      ]),
-    {ok, Sock, St}.
+    Packets = [
+       epgsql_wire:encode_close(Type, Name),
+       epgsql_wire:encode_flush()
+      ],
+    {send_multi, Packets, Sock, St}.
 
 handle_message(?CLOSE_COMPLETE, <<>>, Sock, _St) ->
     {finish, ok, ok, Sock};

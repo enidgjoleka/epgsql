@@ -1,4 +1,4 @@
-%% Special command. Executes Squery over pg_type table and updates codecs.
+%% @doc Special command. Executes Squery over pg_type table and updates codecs.
 -module(epgsql_cmd_update_type_cache).
 -behaviour(epgsql_command).
 -export([init/1, execute/2, handle_message/4]).
@@ -22,8 +22,8 @@ execute(Sock, #upd{codecs = Codecs} = State) ->
     CodecEntries = epgsql_codec:init_mods(Codecs, Sock),
     TypeNames = [element(1, Entry) || Entry <- CodecEntries],
     Query = epgsql_oid_db:build_query(TypeNames),
-    epgsql_sock:send(Sock, ?SIMPLEQUERY, [Query, 0]),
-    {ok, Sock, State#upd{codec_entries = CodecEntries}}.
+    {PktType, PktData} = epgsql_wire:encode_query(Query),
+    {send, PktType, PktData, Sock, State#upd{codec_entries = CodecEntries}}.
 
 handle_message(?ROW_DESCRIPTION, <<Count:?int16, Bin/binary>>, Sock, State) ->
     Codec = epgsql_sock:get_codec(Sock),

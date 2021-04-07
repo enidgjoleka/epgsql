@@ -1,5 +1,10 @@
+%% @doc Requests server to start sending replication packets
+%%
+%% See {@link epgsql:connect/1} `replication' parameter.
+%% ```
 %% > SimpleQuery "START_REPLICATION ..."
 %% < CopyBothResponse | Error
+%% '''
 -module(epgsql_cmd_start_replication).
 -behaviour(epgsql_command).
 -export([init/1, execute/2, handle_message/4]).
@@ -32,7 +37,7 @@ execute(Sock, #start_repl{slot = ReplicationSlot, callback = Callback,
                           plugin_opts = PluginOpts, opts = Opts} = St) ->
     %% Connection should be started with 'replication' option. Then
     %% 'replication_state' will be initialized
-    Repl = #repl{} = epgsql_sock:get_replication_state(Sock),
+    Repl = #repl{} = epgsql_sock:get_subproto_state(Sock),
     Sql1 = ["START_REPLICATION SLOT ", ReplicationSlot, " LOGICAL ", WALPosition],
     Sql2 =
         case PluginOpts of
@@ -52,11 +57,10 @@ execute(Sock, #start_repl{slot = ReplicationSlot, callback = Callback,
     Repl3 = Repl2#repl{last_flushed_lsn = LSN,
                        last_applied_lsn = LSN,
                        align_lsn = AlignLsn},
-    Sock2 = epgsql_sock:set_attr(replication_state, Repl3, Sock),
+    Sock2 = epgsql_sock:set_attr(subproto_state, Repl3, Sock),
                          %% handler = on_replication},
-
-    epgsql_sock:send(Sock2, ?SIMPLEQUERY, [Sql2, 0]),
-    {ok, Sock2, St}.
+    {PktType, PktData} = epgsql_wire:encode_query(Sql2),
+    {send, PktType, PktData, Sock2, St}.
 
 %% CopyBothResponse
 handle_message(?COPY_BOTH_RESPONSE, _Data, Sock, _State) ->

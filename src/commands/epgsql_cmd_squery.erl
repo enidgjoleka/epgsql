@@ -1,4 +1,10 @@
+%% @doc Executes SQL query(es) using
+%% <a href="https://www.postgresql.org/docs/current/protocol-flow.html#id-1.10.5.7.4">
+%% simple query protocol</a>
+%%
+%% Squery can not have placeholders.
 %% Squery may contain many semicolon-separated queries
+%% ```
 %% > Query
 %% < (RowDescription?
 %% <  DataRow*
@@ -8,6 +14,7 @@
 %% > Query when len(strip(Query)) == 0
 %% < EmptyQueryResponse
 %% < ReadyForQuery
+%% '''
 -module(epgsql_cmd_squery).
 -behaviour(epgsql_command).
 -export([init/1, execute/2, handle_message/4]).
@@ -31,8 +38,8 @@ init(Sql) ->
     #squery{query = Sql}.
 
 execute(Sock, #squery{query = Q} = State) ->
-    epgsql_sock:send(Sock, ?SIMPLEQUERY, [Q, 0]),
-    {ok, Sock, State}.
+    {Type, Data} = epgsql_wire:encode_query(Q),
+    {send, Type, Data, Sock, State}.
 
 handle_message(?ROW_DESCRIPTION, <<Count:?int16, Bin/binary>>, Sock, State) ->
     Codec = epgsql_sock:get_codec(Sock),
