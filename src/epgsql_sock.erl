@@ -95,7 +95,7 @@
                 current_cmd_transport :: transport() | undefined,
                 async :: undefined | atom() | pid(),
                 parameters = [] :: [{Key :: binary(), Value :: binary()}],
-                rows = [] :: [tuple()],
+                rows = [] :: [tuple()] | information_redacted,
                 results = [],
                 sync_required :: boolean() | undefined,
                 txstatus :: byte() | undefined,  % $I | $T | $E,
